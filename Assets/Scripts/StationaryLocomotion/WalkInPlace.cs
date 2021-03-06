@@ -106,12 +106,6 @@ namespace Htw.Cave.Locomotion
         public static float lastStatusChange;
         protected readonly static float m_StatusChangeResetDuration = 2.0f;
 
-        protected static KinectDynamicJoint m_kneeLeft;
-        protected static KinectDynamicJoint m_kneeRight;
-        protected static KinectDynamicJoint m_hipLeft;
-        protected static KinectDynamicJoint m_hipRight;
-        protected static KinectDynamicJoint m_neck;
-
         protected static Vector3 m_KneeLeftPos;
         protected static Vector3 m_KneeRightPos;
         protected static Vector3 m_KneeLeftPrevPos;
@@ -154,109 +148,18 @@ namespace Htw.Cave.Locomotion
             if(m_currentActor != null && m_currentActor.trackingId == actor.trackingId)
                 return;
 
-            if(m_currentActor != null)
-            {
-                m_currentActor.onTrack -= OnJointTrack;
-                m_currentActor.onUntrack -= OnJointUntrack;
-            }
-
             m_currentActor = actor;
-
-            m_currentActor.onTrack += OnJointTrack;
-            m_currentActor.onUntrack += OnJointUntrack;
-
-            InitializeJoints();
         }
-
-        protected static void InitializeJoints()
-        {
-            if(m_currentActor == null) return;
-
-            foreach(KinectTrackable trackable in m_currentActor.trackables)
-            {
-                KinectDynamicJoint joint = trackable as KinectDynamicJoint;
-                if(joint == null) continue;
-
-                switch(joint.jointType)
-                {
-                    case Windows.Kinect.JointType.KneeLeft:
-                        m_kneeLeft = joint;
-                        break;
-                    case Windows.Kinect.JointType.KneeRight:
-                        m_kneeRight = joint;
-                        break;
-                    case Windows.Kinect.JointType.HipLeft:
-                        m_hipLeft = joint;
-                        break;
-                    case Windows.Kinect.JointType.HipRight:
-                        m_hipRight = joint;
-                        break;
-                    case Windows.Kinect.JointType.Neck:
-                        m_neck = joint;
-                        break;
-                }
-            }
-        }
-
-        protected static void OnJointTrack(KinectTrackable trackable)
-        {
-            KinectDynamicJoint joint = trackable as KinectDynamicJoint;
-            if(joint == null) return;
-
-            switch(joint.jointType)
-            {
-                case Windows.Kinect.JointType.KneeLeft:
-                m_kneeLeft = joint;
-                break;
-                case Windows.Kinect.JointType.KneeRight:
-                m_kneeRight = joint;
-                break;
-                case Windows.Kinect.JointType.HipLeft:
-                m_hipLeft = joint;
-                break;
-                case Windows.Kinect.JointType.HipRight:
-                m_hipRight = joint;
-                break;
-                case Windows.Kinect.JointType.Neck:
-                m_neck = joint;
-                break;
-            }
-        }
-
-        protected static void OnJointUntrack(KinectTrackable trackable)
-        {
-            KinectDynamicJoint joint = trackable as KinectDynamicJoint;
-            if(joint == null) return;
-
-            switch(joint.jointType)
-            {
-                case Windows.Kinect.JointType.KneeLeft:
-                m_kneeLeft = null;
-                break;
-                case Windows.Kinect.JointType.KneeRight:
-                m_kneeRight = null;
-                break;
-                case Windows.Kinect.JointType.HipLeft:
-                m_hipLeft = null;
-                break;
-                case Windows.Kinect.JointType.HipRight:
-                m_hipRight = null;
-                break;
-                case Windows.Kinect.JointType.Neck:
-                m_neck = null;
-                break;
-            }
-        }
-
+       
         protected static void UpdateNodePositions()
         {
             m_KneeLeftPrevPos = m_KneeLeftPos;
             m_KneeRightPrevPos = m_KneeRightPos;
-            m_HipLeftPos = m_hipLeft.transform.position;
-            m_HipRightPos = m_hipRight.transform.position;
-            m_KneeLeftPos = m_kneeLeft.transform.position;
-            m_KneeRightPos = m_kneeRight.transform.position;
-            m_NeckPos = m_neck.transform.position;
+            m_HipLeftPos = m_currentActor.bodyFrame[Windows.Kinect.JointType.HipLeft].position;
+            m_HipRightPos = m_currentActor.bodyFrame[Windows.Kinect.JointType.HipRight].position;
+            m_KneeLeftPos = m_currentActor.bodyFrame[Windows.Kinect.JointType.KneeLeft].position;
+            m_KneeRightPos = m_currentActor.bodyFrame[Windows.Kinect.JointType.KneeRight].position;
+            m_NeckPos = m_currentActor.bodyFrame[Windows.Kinect.JointType.Neck].position;
         }
 
         protected static float MapRangeToRange(float min, float max, float targetMin, float targetMax, float value)
@@ -277,7 +180,7 @@ namespace Htw.Cave.Locomotion
 
         protected void MoveTarget()
         {
-            Vector3 movementDir = m_neck.transform.forward;
+            Vector3 movementDir = m_currentActor.bodyFrame[Windows.Kinect.JointType.Neck].rotation * Vector3.forward;
             movementDir.y = 0.0f;
             movementDir.Normalize();
 
@@ -316,8 +219,7 @@ namespace Htw.Cave.Locomotion
 
             UpdateInternalState();
 
-            if(m_kneeLeft == null || m_kneeRight == null)
-                return m_StateMachine[WIPPhase.Stationary];
+            if(m_currentActor == null) return m_StateMachine[WIPPhase.Stationary];
 
             Vector3 leftKneeHipDir = m_HipLeftPos - m_KneeLeftPos;
             Vector3 rightKneeHipDir = m_HipRightPos - m_KneeRightPos;
@@ -374,6 +276,9 @@ namespace Htw.Cave.Locomotion
                 return m_StateMachine[WIPPhase.EndStep];
 
             UpdateInternalState();
+
+            if(m_currentActor == null) return m_StateMachine[WIPPhase.Stationary];
+
             Vector3 centerHip = m_HipLeftPos + (m_HipRightPos - m_HipLeftPos) * 0.5f;
             Vector3 upDir = (m_NeckPos - centerHip).normalized;
 
@@ -437,6 +342,8 @@ namespace Htw.Cave.Locomotion
         {
             UpdateInternalState();
 
+            if(m_currentActor == null) return m_StateMachine[WIPPhase.Stationary];
+
             if(Time.time - lastStatusChange > m_TurnDirectionDuration)
                 return m_StateMachine[WIPPhase.BeginDownMove];
 
@@ -473,6 +380,8 @@ namespace Htw.Cave.Locomotion
                 return m_StateMachine[WIPPhase.EndStep];
 
             UpdateInternalState();
+
+            if(m_currentActor == null) return m_StateMachine[WIPPhase.Stationary];
 
             Vector3 centerHip = m_HipLeftPos + (m_HipRightPos - m_HipLeftPos) * 0.5f;
             Vector3 upDir = (m_NeckPos - centerHip).normalized;
@@ -539,8 +448,7 @@ namespace Htw.Cave.Locomotion
         {
             UpdateInternalState();
 
-            if(m_kneeLeft == null || m_kneeRight == null)
-                return m_StateMachine[WIPPhase.Stationary];
+            if(m_currentActor == null) return m_StateMachine[WIPPhase.Stationary];
 
             Vector3 leftKneeHipDir = m_HipLeftPos - m_KneeLeftPos;
             Vector3 rightKneeHipDir = m_HipRightPos - m_KneeRightPos;
@@ -591,8 +499,7 @@ namespace Htw.Cave.Locomotion
 
             UpdateInternalState();
 
-            if(m_kneeLeft == null || m_kneeRight == null)
-                return m_StateMachine[WIPPhase.Stationary];
+            if(m_currentActor == null) return m_StateMachine[WIPPhase.Stationary];
 
             Vector3 leftKneeHipDir = m_HipLeftPos - m_KneeLeftPos;
             Vector3 rightKneeHipDir = m_HipRightPos - m_KneeRightPos;
