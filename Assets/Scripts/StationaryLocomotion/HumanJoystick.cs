@@ -6,30 +6,25 @@ using UnityEditor;
 
 namespace Htw.Cave.Locomotion
 {
-    public class HumanJoystick : StationaryLocomotionAlgorithm
+    [RequireComponent(typeof(StationaryLocomotion))]
+    public class HumanJoystick : MonoBehaviour
     {
-        private float m_maxWalkingspeed = 2.5f;
+        private StationaryLocomotion m_Locomotion;
+
+        [SerializeField]
         private float m_deadZone = 0.25f;
 
-        public float WalkingSpeed { get => m_maxWalkingspeed; set => m_maxWalkingspeed = value; }
-
-        public void UpdateTarget(KinectActor trackedActor, Transform targetToMove)
+        public void Awake()
         {
-            if(!trackedActor || !trackedActor.isTracked) return;
-
-            Vector2 lean = trackedActor.lean;
-            float sqrMag = lean.sqrMagnitude;
-
-            if(lean.sqrMagnitude < m_deadZone * m_deadZone) return;
-
-            Vector3 moveDir = new Vector3(lean.x, 0, lean.y);
-
-            targetToMove.transform.position += moveDir * Mathf.Lerp(0.0f, m_maxWalkingspeed, sqrMag) * Time.deltaTime;
+            m_Locomotion = GetComponent<StationaryLocomotion>();
         }
 
-        public void UpdateTarget(KinectActor trackedActor, Rigidbody targetToMove)
+        public void Update()
         {
-            if(!trackedActor || !trackedActor.isTracked) return;
+            KinectActor trackedActor = m_Locomotion.Actor;
+
+            if(trackedActor == null)
+                return;
 
             Vector2 lean = trackedActor.lean;
             float sqrMag = lean.sqrMagnitude;
@@ -38,7 +33,15 @@ namespace Htw.Cave.Locomotion
 
             Vector3 moveDir = new Vector3(lean.x, 0, lean.y);
 
-            targetToMove.velocity = moveDir * Mathf.Lerp(0.0f, m_maxWalkingspeed, sqrMag);
+            Rigidbody rb = m_Locomotion.rigidbdy;
+
+            if(rb != null)
+            {
+                rb.velocity = moveDir * Mathf.Lerp(0.0f, m_Locomotion.maxWalkingSpeed, sqrMag);
+                return;
+            }
+
+            m_Locomotion.target.position += moveDir * Mathf.Lerp(0.0f, m_Locomotion.maxWalkingSpeed, sqrMag) * Time.deltaTime;
         }
     }
 }

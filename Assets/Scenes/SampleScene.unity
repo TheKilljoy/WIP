@@ -257,6 +257,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08e8b42a948f7d44bb4d17348c92b813, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  filterPositionAndRotation: 1
   jointType: 17
 --- !u!1 &53000982
 GameObject:
@@ -424,8 +425,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   actorTracker: {fileID: 62095545}
-  volume:
-    m_Center: {x: 0, y: 2, z: 1}
+  m_Volume:
+    m_Center: {x: 0, y: 2, z: 2}
     m_Extent: {x: 2, y: 2, z: 2}
   m_SelectionType: 0
 --- !u!1 &72942500
@@ -660,6 +661,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08e8b42a948f7d44bb4d17348c92b813, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  filterPositionAndRotation: 1
   jointType: 2
 --- !u!1 &279824247
 GameObject:
@@ -766,7 +768,7 @@ GameObject:
   - component: {fileID: 295431085}
   - component: {fileID: 295431084}
   m_Layer: 5
-  m_Name: WalkStatus
+  m_Name: AngleRight
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -968,6 +970,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08e8b42a948f7d44bb4d17348c92b813, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  filterPositionAndRotation: 1
   jointType: 16
 --- !u!1 &479475425
 GameObject:
@@ -1400,6 +1403,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: df5884adf50407940b7aba470a474fa1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  filterPositionAndRotation: 1
   handType: 1
 --- !u!1 &587594347
 GameObject:
@@ -1537,6 +1541,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08e8b42a948f7d44bb4d17348c92b813, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  filterPositionAndRotation: 1
   jointType: 5
 --- !u!1 &696785899
 GameObject:
@@ -1801,7 +1806,7 @@ GameObject:
   - component: {fileID: 740702173}
   - component: {fileID: 740702172}
   m_Layer: 5
-  m_Name: StepCount
+  m_Name: MovementSpeed
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1954,6 +1959,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08e8b42a948f7d44bb4d17348c92b813, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  filterPositionAndRotation: 1
   jointType: 12
 --- !u!1 &771425508
 GameObject:
@@ -2091,6 +2097,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: df5884adf50407940b7aba470a474fa1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  filterPositionAndRotation: 1
   handType: 0
 --- !u!1 &857120822
 GameObject:
@@ -2197,7 +2204,7 @@ GameObject:
   - component: {fileID: 904285326}
   - component: {fileID: 904285325}
   m_Layer: 5
-  m_Name: AngleLeft
+  m_Name: CurrentState
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2492,6 +2499,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08e8b42a948f7d44bb4d17348c92b813, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  filterPositionAndRotation: 1
   jointType: 4
 --- !u!1 &963194225
 GameObject:
@@ -2620,7 +2628,7 @@ GameObject:
   - component: {fileID: 981753935}
   - component: {fileID: 981753934}
   m_Layer: 5
-  m_Name: LastFoot
+  m_Name: AngleLeft
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2729,6 +2737,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08e8b42a948f7d44bb4d17348c92b813, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  filterPositionAndRotation: 1
   jointType: 0
 --- !u!1 &1142787416
 GameObject:
@@ -3288,6 +3297,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08e8b42a948f7d44bb4d17348c92b813, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  filterPositionAndRotation: 1
   jointType: 8
 --- !u!1 &1326330327
 GameObject:
@@ -3550,6 +3560,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08e8b42a948f7d44bb4d17348c92b813, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  filterPositionAndRotation: 1
   jointType: 14
 --- !u!1 &1445389103
 GameObject:
@@ -4030,6 +4041,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08e8b42a948f7d44bb4d17348c92b813, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  filterPositionAndRotation: 1
   jointType: 18
 --- !u!1 &1589086526
 GameObject:
@@ -4199,6 +4211,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08e8b42a948f7d44bb4d17348c92b813, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  filterPositionAndRotation: 1
   jointType: 13
 --- !u!1 &1732261550
 GameObject:
@@ -4243,6 +4256,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 60c9b8ec33f50434eb07b822a88cfc8d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  filterPositionAndRotation: 0
 --- !u!1 &1735011359
 GameObject:
   m_ObjectHideFlags: 0
@@ -4641,7 +4655,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1797612058}
-  - component: {fileID: 1797612057}
+  - component: {fileID: 1797612059}
+  - component: {fileID: 1797612060}
   m_Layer: 0
   m_Name: StationaryLocomotionManager
   m_TagString: Untagged
@@ -4649,32 +4664,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1797612057
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1797612056}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 392d7272b3151b94aab4bd0cfa79a185, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  usedLocomotionAlgorithm: 0
-  useRigidbody: 1
-  t_target: {fileID: 963194228}
-  rb_target: {fileID: 963194230}
-  trackingArea: {fileID: 62095548}
-  walkingSpeed: 2.5
-  angleLeft: {fileID: 904285325}
-  angleRight: {fileID: 2044272937}
-  lastFoot: {fileID: 981753934}
-  walkStatus: {fileID: 295431084}
-  stepCount: {fileID: 740702172}
-  hipHeight: {fileID: 1248239090}
-  velocity: {fileID: 1735011361}
-  stepDone: {fileID: 1935819627}
 --- !u!4 &1797612058
 Transform:
   m_ObjectHideFlags: 0
@@ -4689,6 +4678,43 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1797612059
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1797612056}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f009454c3a04f3c479afd098a384c89b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxWalkingSpeed: 2.5
+  minWalkingSpeed: 1.5
+  trackingArea: {fileID: 62095548}
+  m_Target: {fileID: 963194228}
+  m_Rigidbody: {fileID: 963194230}
+--- !u!114 &1797612060
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1797612056}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a2b7191fc28463498f1f8582a6a0e00, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_BeginStepAngle: 30
+  m_EndStepAngle: 15
+  m_MaxVelocityDeltaAngle: 30
+  currentState: {fileID: 904285325}
+  lastFoot: {fileID: 2044272937}
+  leftAngle: {fileID: 981753934}
+  rightAngle: {fileID: 295431084}
+  movementSpeed: {fileID: 740702172}
 --- !u!1 &1827905182
 GameObject:
   m_ObjectHideFlags: 0
@@ -4918,6 +4944,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 08e8b42a948f7d44bb4d17348c92b813, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  filterPositionAndRotation: 1
   jointType: 9
 --- !u!1 &1935819625
 GameObject:
@@ -5041,7 +5068,7 @@ GameObject:
   - component: {fileID: 2044272938}
   - component: {fileID: 2044272937}
   m_Layer: 5
-  m_Name: AngleRight
+  m_Name: LastFoot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

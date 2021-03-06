@@ -9,18 +9,4 @@ namespace Htw.Cave.Locomotion
         WalkInPlace,
         HumanJoystick,
     }
-
-    public enum WIPStatus
-    {
-        Stationary,
-        BeginStep,
-        EndStep,
-    }
-
-    public enum WIPFoot
-    {
-        None,
-        Left,
-        Right,
-    }
 }
