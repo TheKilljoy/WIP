@@ -44,35 +44,6 @@ namespace Htw.Cave.Locomotion
 
         private WIPStateMachine m_StateMachine;
 
-        // DEBUG ////////////////////////////////////////
-
-        public UnityEngine.UI.Text currentState;
-
-        public UnityEngine.UI.Text lastFoot;
-
-        public UnityEngine.UI.Text leftAngle;
-
-        public UnityEngine.UI.Text rightAngle;
-
-        public UnityEngine.UI.Text movementSpeed;
-
-        public static WIPFoot lastFootValue;
-        public static float leftAngleValue;
-        public static float rightAngleValue;
-        public static float movementSpeedValue;
-
-        private int bufferIndex = 0;
-        private const int bufferSize = 4 * 60;
-        private Vector2 bufferDimension = new Vector2(Screen.width, 200.0f);
-        private float[] m_speedBuffer = new float[bufferSize];
-        private float[] m_angleLeftBuffer = new float[bufferSize];
-        private float[] m_angleRightBuffer = new float[bufferSize];
-        private bool[] m_phaseBuffer = new bool[bufferSize];
-        private int[] m_colorBuffer = new int[bufferSize];
-        private int lastPhase = 0;
-
-        // END DEBUG ////////////////////////////////////
-
         public void Awake()
         {
             m_Locomotion = GetComponent<StationaryLocomotion>();
@@ -83,66 +54,6 @@ namespace Htw.Cave.Locomotion
         public void Update()
         {
             m_StateMachine.Update();
-
-            //Debug
-            currentState.text = "State: " + m_StateMachine.currentState.myPhase;
-            lastFoot.text = "Last Foot: " + lastFootValue;
-            leftAngle.text = "Left Angle: " + leftAngleValue.ToString("F4");
-            rightAngle.text = "Right Angle: " + rightAngleValue.ToString("F4");
-            movementSpeed.text = "Speed: " + movementSpeedValue.ToString("F4");
-
-            Camera camera = m_Locomotion.target.GetComponent<Camera>();
-
-            Color[] phaseColors = new Color[]
-            {
-                Color.black,
-                Color.green,
-                Color.blue,
-                Color.yellow,
-                Color.red,
-                Color.cyan,
-            };
-
-            int currentPhase = (int)m_StateMachine.currentState.myPhase;
-
-            m_speedBuffer[bufferIndex] = movementSpeedValue;
-            m_angleLeftBuffer[bufferIndex] = leftAngleValue;
-            m_angleRightBuffer[bufferIndex] = rightAngleValue;
-            m_phaseBuffer[bufferIndex] = lastPhase != currentPhase;
-            if(lastPhase != currentPhase)
-            {
-                lastPhase = currentPhase;
-            }
-            m_colorBuffer[bufferIndex] = currentPhase;
-            bufferIndex = (bufferIndex + 1) % bufferSize;
-            Vector3 prevPos = new Vector3(0, 10.0f, 0.5f);
-            Vector3 prevPosAngleRight = new Vector3(0, 10.0f, 0.49f);
-            Vector3 prevPosAngleLeft = new Vector3(0, 10.0f, 0.49f);
-            for(int i = 0; i < bufferSize; ++i)
-            {
-                float xPos = MapRangeToRange(0.0f, bufferSize, 0.0f, bufferDimension.x, i);
-                float yPos = MapRangeToRange(0.0f, m_Locomotion.maxWalkingSpeed, 0.0f, bufferDimension.y, m_speedBuffer[i]);
-                float yPosRightAngle = MapRangeToRange(0.0f, 180.0f, 0.0f, bufferDimension.y, m_angleRightBuffer[i]);
-                float yPosLeftAngle = MapRangeToRange(0.0f, 180.0f, 0.0f, bufferDimension.y, m_angleLeftBuffer[i]);
-                Vector3 pos = new Vector3(xPos, yPos + 10, 0.5f);
-                Vector3 posAngleRight = new Vector3(xPos, yPosRightAngle, 0.49f);
-                Vector3 posAngleLeft = new Vector3(xPos, yPosLeftAngle, 0.49f);
-                Debug.DrawLine(camera.ScreenToWorldPoint(prevPos), camera.ScreenToWorldPoint(pos), Color.magenta);
-                Debug.DrawLine(camera.ScreenToWorldPoint(prevPosAngleRight), camera.ScreenToWorldPoint(posAngleRight), Color.cyan);
-                Debug.DrawLine(camera.ScreenToWorldPoint(prevPosAngleLeft), camera.ScreenToWorldPoint(posAngleLeft), new Color(26 / 255f, 174 / 255f, 237 / 255f));
-                prevPos = pos;
-                prevPosAngleLeft = posAngleLeft;
-                prevPosAngleRight = posAngleRight;
-                if(m_phaseBuffer[i])
-                    Debug.DrawLine(camera.ScreenToWorldPoint(new Vector3(xPos, bufferDimension.y, 0.51f)),
-                    camera.ScreenToWorldPoint(new Vector3(xPos, 0.0f, 0.51f)),
-                    phaseColors[m_colorBuffer[i]]);
-
-            }
-
-            // END DEBUG
-
-
         }
 
         protected static float MapRangeToRange(float min, float max, float targetMin, float targetMax, float value)
@@ -416,12 +327,6 @@ namespace Htw.Cave.Locomotion
             m_AngleLeft = Vector3.Angle(leftKneeHipDir, upDir);
             m_AngleRight = Vector3.Angle(rightKneeHipDir, upDir);
 
-            // DEBUG
-            WalkInPlace.lastFootValue = m_LastFoot;
-            WalkInPlace.leftAngleValue = m_AngleLeft;
-            WalkInPlace.rightAngleValue = m_AngleRight;
-            // END DEBUG
-
             if(m_AngleLeft >= m_BeginStepAngle && m_AngleRight >= m_BeginStepAngle)
                 return m_StateMachine[WIPPhase.Stationary];
 
@@ -476,21 +381,11 @@ namespace Htw.Cave.Locomotion
             {
                 Vector3 leftKneeHipDir = m_HipLeftPos - m_KneeLeftPos;
                 m_CurrentAngle = Vector3.Angle(leftKneeHipDir, upDir);
-
-                // DEBUG
-                WalkInPlace.lastFootValue = m_LastFoot;
-                WalkInPlace.leftAngleValue = m_CurrentAngle;
-                // END DEBUG
             }
             else
             {
                 Vector3 rightKneeHipDir = m_HipRightPos - m_KneeRightPos;
                 m_CurrentAngle = Vector3.Angle(rightKneeHipDir, upDir);
-
-                // DEBUG
-                WalkInPlace.lastFootValue = m_LastFoot;
-                WalkInPlace.rightAngleValue = m_CurrentAngle;
-                // END DEBUG
             }
 
             if (!m_isInitialized)
@@ -586,28 +481,17 @@ namespace Htw.Cave.Locomotion
             {
                 Vector3 leftKneeHipDir = m_HipLeftPos - m_KneeLeftPos;
                 m_CurrentAngle = Vector3.Angle(leftKneeHipDir, upDir);
-
-                // DEBUG
-                WalkInPlace.lastFootValue = m_LastFoot;
-                WalkInPlace.leftAngleValue = m_CurrentAngle;
-                // END DEBUG
             }
             else
             {
                 Vector3 rightKneeHipDir = m_HipRightPos - m_KneeRightPos;
                 m_CurrentAngle = Vector3.Angle(rightKneeHipDir, upDir);
-
-                // DEBUG
-                WalkInPlace.lastFootValue = m_LastFoot;
-                WalkInPlace.rightAngleValue = m_CurrentAngle;
-                // END DEBUG
             }
 
             if(!m_isInitialized)
             {
                 m_isInitialized = true;
                 m_LastCheck = Time.time;
-                //m_LastAngle = m_CurrentAngle;
             }
 
             if(Time.time - m_LastCheck >= m_CheckAngleChangedInverval)
@@ -666,12 +550,6 @@ namespace Htw.Cave.Locomotion
             m_AngleLeft = Vector3.Angle(leftKneeHipDir, upDir);
             m_AngleRight = Vector3.Angle(rightKneeHipDir, upDir);
 
-            // DEBUG
-            WalkInPlace.lastFootValue = m_LastFoot;
-            WalkInPlace.leftAngleValue = m_AngleLeft;
-            WalkInPlace.rightAngleValue = m_AngleRight;
-            // END DEBUG
-
             if(m_LastFoot == WIPFoot.Left && m_AngleLeft < m_EndStepAngle)
             {
                 return m_StateMachine[WIPPhase.Stationary];
@@ -723,12 +601,6 @@ namespace Htw.Cave.Locomotion
 
             m_AngleLeft = Vector3.Angle(leftKneeHipDir, upDir);
             m_AngleRight = Vector3.Angle(rightKneeHipDir, upDir);
-
-            // DEBUG
-            WalkInPlace.lastFootValue = m_LastFoot;
-            WalkInPlace.leftAngleValue = m_AngleLeft;
-            WalkInPlace.rightAngleValue = m_AngleRight;
-            // END DEBUG
 
             float deltaTime = lastStatusChange - Time.time + m_FadeOutDuration;
             
