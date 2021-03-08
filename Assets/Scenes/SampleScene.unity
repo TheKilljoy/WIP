@@ -4035,9 +4035,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0a2b7191fc28463498f1f8582a6a0e00, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_BeginStepAngle: 30
-  m_EndStepAngle: 15
-  m_MaxVelocityDeltaAngle: 30
+  beginStepAngle: 25
+  endStepAngle: 15
+  maxVelocityDeltaAngle: 10
+  useLeaningForRotation: 1
+  deadzone: 0.25
+  rotationSpeedLeaning: 0.5
 --- !u!1 &1827905182
 GameObject:
   m_ObjectHideFlags: 0

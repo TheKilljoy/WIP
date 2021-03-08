@@ -25,20 +25,27 @@ namespace Htw.Cave.Locomotion
     [RequireComponent(typeof(StationaryLocomotion))]
     public class WalkInPlace : MonoBehaviour
     {
-        [SerializeField]
         [Tooltip("Angle Threshold for beginning a step")]
         [Range(20.0f, 90.0f)]
-        private float m_BeginStepAngle = 25.0f;
+        public float beginStepAngle = 25.0f;
 
-        [SerializeField]
         [Tooltip("Angle Threshold for ending a step")]
         [Range(5.0f, 20.0f)]
-        private float m_EndStepAngle = 15.0f;
+        public float endStepAngle = 15.0f;
 
-        [SerializeField]
         [Tooltip("Maximum walking speed is reached at this angle/(1/30s)")]
         [Range(1.0f, 45.0f)]
-        private float m_MaxVelocityDeltaAngle = 10.0f;
+        public float maxVelocityDeltaAngle = 10.0f;
+
+        [Tooltip("Rotate target using leaning instead of walking towards head-rotation")]
+        public bool useLeaningForRotation = false;
+
+        [Tooltip("Deadzone used for Leaning")]
+        [Range(0.01f, 1.0f)]
+        public float deadzone = 0.25f;
+
+        [Range(0.01f, 1.0f)]
+        public float rotationSpeedLeaning = 0.5f;
 
         private StationaryLocomotion m_Locomotion;
 
@@ -47,8 +54,7 @@ namespace Htw.Cave.Locomotion
         public void Awake()
         {
             m_Locomotion = GetComponent<StationaryLocomotion>();
-            m_StateMachine = new WIPStateMachine(m_Locomotion, m_BeginStepAngle, 
-                                                 m_EndStepAngle, m_MaxVelocityDeltaAngle);
+            m_StateMachine = new WIPStateMachine(m_Locomotion, this);
         }
 
         public void Update()
@@ -74,17 +80,16 @@ namespace Htw.Cave.Locomotion
 
         public WIPState currentState => m_Current;
 
-        public WIPStateMachine(StationaryLocomotion locomotion, float beginStepAngle, 
-                               float endStepAngle, float maxVelocityAngle)
+        public WIPStateMachine(StationaryLocomotion locomotion, WalkInPlace wip)
         {
             m_States = new WIPState[]
             {
-                new Stationary(this, locomotion, beginStepAngle),
-                new BeginUpMove(this, locomotion, beginStepAngle, maxVelocityAngle),
-                new TurnDirection(this, locomotion),
-                new BeginDownMove(this, locomotion, beginStepAngle, endStepAngle, maxVelocityAngle),
-                new EndStep(this, locomotion, endStepAngle),
-                new SmoothEndStep(this, locomotion,beginStepAngle, endStepAngle),
+                new Stationary(this, locomotion, wip),
+                new BeginUpMove(this, locomotion, wip),
+                new TurnDirection(this, locomotion, wip),
+                new BeginDownMove(this, locomotion, wip),
+                new EndStep(this, locomotion, wip),
+                new SmoothEndStep(this, locomotion, wip),
             };
 
             m_Current = m_States[0];
@@ -124,6 +129,8 @@ namespace Htw.Cave.Locomotion
 
         protected static StationaryLocomotion m_Locomotion;
 
+        protected static WalkInPlace m_WIP;
+
         protected static WIPStateMachine m_StateMachine;
 
         protected static KinectActor m_currentActor;
@@ -137,6 +144,8 @@ namespace Htw.Cave.Locomotion
             if(m_currentActor == null) return;
 
             UpdateNodePositions();
+
+            UpdateTargetRotation();
         }
 
         protected static void TryUpdateNewActor()
@@ -162,6 +171,30 @@ namespace Htw.Cave.Locomotion
             m_NeckPos = m_currentActor.bodyFrame[Windows.Kinect.JointType.Neck].position;
         }
 
+        protected static void UpdateTargetRotation()
+        {
+            if(!m_WIP.useLeaningForRotation) return;
+
+            Vector2 lean = m_currentActor.lean;
+
+            if(Mathf.Abs(lean.x) <= m_WIP.deadzone) return;
+
+            Rigidbody rb = m_Locomotion.rigidbdy;
+
+            Debug.Log(lean.x);
+            Debug.Log(Mathf.Sign(lean.x));
+            float rotationValue = Mathf.Lerp(0, m_WIP.rotationSpeedLeaning, Mathf.Abs(lean.x)) * Mathf.Sign(lean.x);
+
+            if(rb != null)
+            {
+                rb.rotation *= Quaternion.Euler(0,rotationValue, 0);
+                return;
+            }
+
+            m_Locomotion.target.rotation *= 
+                Quaternion.Euler(0, rotationValue * Time.deltaTime, 0);
+        }
+
         protected static float MapRangeToRange(float min, float max, float targetMin, float targetMax, float value)
         {
             return (value <= min) ? targetMin :
@@ -169,10 +202,11 @@ namespace Htw.Cave.Locomotion
                    (value - min) * (targetMax - targetMin) / (max - min) + targetMin;
         }
 
-        public WIPState(WIPStateMachine stateMachine, StationaryLocomotion locomotion)
+        public WIPState(WIPStateMachine stateMachine, StationaryLocomotion locomotion, WalkInPlace wip)
         {
             m_StateMachine = stateMachine;
             m_Locomotion = locomotion;
+            m_WIP = wip;
             TryUpdateNewActor();
         }
 
@@ -180,33 +214,34 @@ namespace Htw.Cave.Locomotion
 
         protected void MoveTarget()
         {
-            Vector3 movementDir = m_currentActor.bodyFrame[Windows.Kinect.JointType.Neck].rotation * Vector3.forward;
+            Rigidbody rb = m_Locomotion.rigidbdy;
+
+            Vector3 movementDir = (!m_WIP.useLeaningForRotation) ? 
+                                   m_currentActor.bodyFrame[Windows.Kinect.JointType.Neck].rotation * -Vector3.forward :
+                                  (rb != null) ? rb.rotation * Vector3.forward : m_Locomotion.transform.forward;
             movementDir.y = 0.0f;
             movementDir.Normalize();
 
-            Rigidbody rb = m_Locomotion.rigidbdy;
             if(rb != null)
             {
-                rb.velocity = m_CurrentMovespeed * -movementDir;
+                rb.velocity = m_CurrentMovespeed * movementDir;
             }
             else
             {
-                m_Locomotion.target.position += -movementDir * m_CurrentMovespeed * Time.deltaTime;
+                m_Locomotion.target.position += movementDir * m_CurrentMovespeed * Time.deltaTime;
             }
         }
     }
 
     public class Stationary : WIPState
     {
-        private float m_BeginStepAngle;
         private float m_AngleLeft;
         private float m_AngleRight;
 
-        public Stationary(WIPStateMachine stateMachine, StationaryLocomotion locomotion, float beginStepAngle) 
-            : base(stateMachine, locomotion)
+        public Stationary(WIPStateMachine stateMachine, StationaryLocomotion locomotion, WalkInPlace wip) 
+            : base(stateMachine, locomotion, wip)
         {
             myPhase = WIPPhase.Stationary;
-            m_BeginStepAngle = beginStepAngle;
         }
 
         public override WIPState Update()
@@ -229,18 +264,18 @@ namespace Htw.Cave.Locomotion
             m_AngleLeft = Vector3.Angle(leftKneeHipDir, upDir);
             m_AngleRight = Vector3.Angle(rightKneeHipDir, upDir);
 
-            if(m_AngleLeft >= m_BeginStepAngle && m_AngleRight >= m_BeginStepAngle)
+            if(m_AngleLeft >= m_WIP.beginStepAngle && m_AngleRight >= m_WIP.beginStepAngle)
                 return m_StateMachine[WIPPhase.Stationary];
 
             if((m_LastFoot == WIPFoot.None || m_LastFoot == WIPFoot.Right) &&
-                m_AngleLeft >= m_BeginStepAngle)
+                m_AngleLeft >= m_WIP.beginStepAngle)
             {
                 m_LastFoot = WIPFoot.Left;
                 return m_StateMachine[WIPPhase.BeginUpMove];
             }
 
             if((m_LastFoot == WIPFoot.None || m_LastFoot == WIPFoot.Left) &&
-                m_AngleRight >= m_BeginStepAngle)
+                m_AngleRight >= m_WIP.beginStepAngle)
             {
                 m_LastFoot = WIPFoot.Right;
                 return m_StateMachine[WIPPhase.BeginUpMove];
@@ -252,22 +287,16 @@ namespace Htw.Cave.Locomotion
 
     public class BeginUpMove : WIPState
     {
-        private float m_BeginStepAngle;
-        private float m_MaxVelocityAngle;
-
         private bool m_isInitialized = false;
         private float m_LastCheck;
 
         private const float m_CheckAngleChangedInverval = 0.0333f;
         private const float m_MinAngleChangePerInterval = 0.5f;
 
-        public BeginUpMove(WIPStateMachine stateMachine, StationaryLocomotion locomotion, 
-                           float beginStepAngle, float maxVelocityAngle) 
-            : base(stateMachine, locomotion)
+        public BeginUpMove(WIPStateMachine stateMachine, StationaryLocomotion locomotion, WalkInPlace wip) 
+            : base(stateMachine, locomotion, wip)
         {
             myPhase = WIPPhase.BeginUpMove;
-            m_BeginStepAngle = beginStepAngle;
-            m_MaxVelocityAngle = maxVelocityAngle;
         }
 
         public override WIPState Update()
@@ -314,7 +343,7 @@ namespace Htw.Cave.Locomotion
                 }
             }
 
-            float speedMultiplier = MapRangeToRange(0.0f, m_MaxVelocityAngle, 
+            float speedMultiplier = MapRangeToRange(0.0f, m_WIP.maxVelocityDeltaAngle, 
                                                     0.75f, 1.0f,
                                                     m_DeltaAngle);
 
@@ -332,8 +361,8 @@ namespace Htw.Cave.Locomotion
     {
         private const float m_TurnDirectionDuration = 0.1f;
 
-        public TurnDirection(WIPStateMachine stateMachine, StationaryLocomotion locomotion) 
-            : base(stateMachine, locomotion)
+        public TurnDirection(WIPStateMachine stateMachine, StationaryLocomotion locomotion, WalkInPlace wip) 
+            : base(stateMachine, locomotion, wip)
         {
             myPhase = WIPPhase.BeginTurnDirection;
         }
@@ -355,23 +384,15 @@ namespace Htw.Cave.Locomotion
 
     public class BeginDownMove : WIPState
     {
-        private float m_BeginStepAngle;
-        private float m_EndStepAngle;
-        private float m_MaxVelocityAngle;
-
         private bool m_isInitialized = false;
         private float m_LastCheck;
         private const float m_CheckAngleChangedInverval = 0.0333f;
         private const float m_MinAngleChange = 0.1f;
 
-        public BeginDownMove(WIPStateMachine stateMachine, StationaryLocomotion locomotion, 
-                             float beginStepAngle, float endStepAngle, float maxVelocityAngle) 
-            : base(stateMachine, locomotion)
+        public BeginDownMove(WIPStateMachine stateMachine, StationaryLocomotion locomotion, WalkInPlace wip) 
+            : base(stateMachine, locomotion, wip)
         {
             myPhase = WIPPhase.BeginDownMove;
-            m_BeginStepAngle = beginStepAngle;
-            m_EndStepAngle = endStepAngle;
-            m_MaxVelocityAngle = maxVelocityAngle;
         }
 
         public override WIPState Update()
@@ -417,7 +438,7 @@ namespace Htw.Cave.Locomotion
                 }
             }
 
-            float speedMultiplier = MapRangeToRange(0.0f, m_MaxVelocityAngle, 
+            float speedMultiplier = MapRangeToRange(0.0f, m_WIP.maxVelocityDeltaAngle, 
                                                     0.75f, 1.0f,
                                                     Mathf.Abs(m_DeltaAngle));
 
@@ -433,15 +454,13 @@ namespace Htw.Cave.Locomotion
 
     public class EndStep : WIPState
     {
-        private float m_EndStepAngle;
         private float m_AngleLeft;
         private float m_AngleRight;
 
-        public EndStep(WIPStateMachine stateMachine, StationaryLocomotion locomotion, float endStepAngle) 
-            : base(stateMachine, locomotion)
+        public EndStep(WIPStateMachine stateMachine, StationaryLocomotion locomotion, WalkInPlace wip) 
+            : base(stateMachine, locomotion, wip)
         {
             myPhase = WIPPhase.EndStep;
-            m_EndStepAngle = endStepAngle;
         }
 
         public override WIPState Update()
@@ -458,12 +477,12 @@ namespace Htw.Cave.Locomotion
             m_AngleLeft = Vector3.Angle(leftKneeHipDir, upDir);
             m_AngleRight = Vector3.Angle(rightKneeHipDir, upDir);
 
-            if(m_LastFoot == WIPFoot.Left && m_AngleLeft < m_EndStepAngle)
+            if(m_LastFoot == WIPFoot.Left && m_AngleLeft < m_WIP.endStepAngle)
             {
                 return m_StateMachine[WIPPhase.Stationary];
             }
 
-            if(m_LastFoot == WIPFoot.Right && m_AngleRight < m_EndStepAngle)
+            if(m_LastFoot == WIPFoot.Right && m_AngleRight < m_WIP.endStepAngle)
             {
                 return m_StateMachine[WIPPhase.Stationary];
             }
@@ -474,18 +493,14 @@ namespace Htw.Cave.Locomotion
 
     public class SmoothEndStep : WIPState
     {
-        private float m_BeginStepAngle;
-        private float m_EndStepAngle;
         private float m_AngleLeft;
         private float m_AngleRight;
         private const float m_FadeOutDuration = 0.3f;
 
-        public SmoothEndStep(WIPStateMachine stateMachine, StationaryLocomotion locomotion, float beginStepAngle, float endStepAngle)
-            : base(stateMachine, locomotion)
+        public SmoothEndStep(WIPStateMachine stateMachine, StationaryLocomotion locomotion, WalkInPlace wip)
+            : base(stateMachine, locomotion, wip)
         {
             myPhase = WIPPhase.SmoothEndStep;
-            m_EndStepAngle = endStepAngle;
-            m_BeginStepAngle = beginStepAngle;
         }
 
         public override WIPState Update()
@@ -518,18 +533,18 @@ namespace Htw.Cave.Locomotion
 
             MoveTarget();
 
-            if(m_AngleLeft >= m_BeginStepAngle && m_AngleRight >= m_BeginStepAngle)
+            if(m_AngleLeft >= m_WIP.beginStepAngle && m_AngleRight >= m_WIP.beginStepAngle)
                 return m_StateMachine[WIPPhase.SmoothEndStep];
 
             if((m_LastFoot == WIPFoot.None || m_LastFoot == WIPFoot.Right) &&
-                m_AngleLeft >= m_BeginStepAngle)
+                m_AngleLeft >= m_WIP.beginStepAngle)
             {
                 m_LastFoot = WIPFoot.Left;
                 return m_StateMachine[WIPPhase.BeginUpMove];
             }
 
             if((m_LastFoot == WIPFoot.None || m_LastFoot == WIPFoot.Left) &&
-                m_AngleRight >= m_BeginStepAngle)
+                m_AngleRight >= m_WIP.beginStepAngle)
             {
                 m_LastFoot = WIPFoot.Right;
                 return m_StateMachine[WIPPhase.BeginUpMove];
