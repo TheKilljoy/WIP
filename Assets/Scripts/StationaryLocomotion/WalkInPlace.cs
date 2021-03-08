@@ -181,8 +181,6 @@ namespace Htw.Cave.Locomotion
 
             Rigidbody rb = m_Locomotion.rigidbdy;
 
-            Debug.Log(lean.x);
-            Debug.Log(Mathf.Sign(lean.x));
             float rotationValue = Mathf.Lerp(0, m_WIP.rotationSpeedLeaning, Mathf.Abs(lean.x)) * Mathf.Sign(lean.x);
 
             if(rb != null)
