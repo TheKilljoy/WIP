@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Htw.Cave.Locomotion
 {
-    public enum WIPPhase
+    public enum WIPPhaseType
     {
         Stationary           = 0,
         BeginUpMove          = 1,
@@ -47,19 +47,19 @@ namespace Htw.Cave.Locomotion
         [Range(0.01f, 1.0f)]
         public float rotationSpeedLeaning = 0.5f;
 
-        private StationaryLocomotion m_Locomotion;
+        private StationaryLocomotion locomotion;
 
-        private WIPStateMachine m_StateMachine;
+        private WIPStateMachine stateMachine;
 
         public void Awake()
         {
-            m_Locomotion = GetComponent<StationaryLocomotion>();
-            m_StateMachine = new WIPStateMachine(m_Locomotion, this);
+            locomotion = GetComponent<StationaryLocomotion>();
+            stateMachine = new WIPStateMachine(locomotion, this);
         }
 
         public void Update()
         {
-            m_StateMachine.Update();
+            stateMachine.Update();
         }
 
         protected static float MapRangeToRange(float min, float max, float targetMin, float targetMax, float value)
@@ -72,24 +72,27 @@ namespace Htw.Cave.Locomotion
 
     public class WIPStateMachine
     {
-        public WIPState this[WIPPhase phase] => this.m_States[(int)phase];
+        public WIPPhase this[WIPPhaseType phase] => this.m_States[(int)phase];
 
-        private WIPState[] m_States;
+        private WIPPhase[] m_States;
 
-        private WIPState m_Current;
+        private WIPPhase m_Current;
 
-        public WIPState currentState => m_Current;
+        public WIPPhase currentState => m_Current;
+
+        private WIPState m_WIPState;
 
         public WIPStateMachine(StationaryLocomotion locomotion, WalkInPlace wip)
         {
-            m_States = new WIPState[]
+            m_WIPState = new WIPState(this, locomotion, wip);
+            m_States = new WIPPhase[]
             {
-                new Stationary(this, locomotion, wip),
-                new BeginUpMove(this, locomotion, wip),
-                new TurnDirection(this, locomotion, wip),
-                new BeginDownMove(this, locomotion, wip),
-                new EndStep(this, locomotion, wip),
-                new SmoothEndStep(this, locomotion, wip),
+                new Stationary(m_WIPState),
+                new BeginUpMove(m_WIPState),
+                new TurnDirection(m_WIPState),
+                new BeginDownMove(m_WIPState),
+                new EndStep(m_WIPState),
+                new SmoothEndStep(m_WIPState),
             };
 
             m_Current = m_States[0];
@@ -97,91 +100,103 @@ namespace Htw.Cave.Locomotion
 
         public void Update()
         {
-            WIPState newState = m_Current.Update();
+            WIPPhase newState = m_Current.Update();
             if(newState != m_Current)
             {
                 m_Current = newState;
-                WIPState.lastStatusChange = Time.time;
+                m_WIPState.lastStatusChange = Time.time;
             }
         }
     }
 
-    public abstract class WIPState
+    public class WIPState
     {
-        public static float lastStatusChange;
-        protected readonly static float m_StatusChangeResetDuration = 2.0f;
+        public float lastStatusChange;
+        public readonly float StatusChangeResetDuration = 2.0f;
 
-        protected static Vector3 m_KneeLeftPos;
-        protected static Vector3 m_KneeRightPos;
-        protected static Vector3 m_KneeLeftPrevPos;
-        protected static Vector3 m_KneeRightPrevPos;
-        protected static Vector3 m_HipLeftPos;
-        protected static Vector3 m_HipRightPos;
-        protected static Vector3 m_NeckPos;
+        public Vector3 kneeLeftPos;
+        public Vector3 kneeRightPos;
+        public Vector3 kneeLeftPrevPos;
+        public Vector3 kneeRightPrevPos;
+        public Vector3 hipLeftPos;
+        public Vector3 hipRightPos;
+        public Vector3 neckPos;
 
-        protected static float m_CurrentAngle;
-        protected static float m_LastAngle;
-        protected static float m_DeltaAngle;
-        protected static float m_CurrentMovespeed;
-        protected static float m_LastMovespeed;
+        public float currentAngle;
+        public float lastAngle;
+        public float deltaAngle;
+        public float currentMovespeed;
+        public float lastMovespeed;
 
-        protected static WIPFoot m_LastFoot = WIPFoot.None;
+        public WIPFoot lastFoot = WIPFoot.None;
+               
+        public StationaryLocomotion locomotion;
+               
+        public WalkInPlace walkInPlace;
+               
+        public WIPStateMachine stateMachine;
+               
+        public KinectActor currentActor;
 
-        protected static StationaryLocomotion m_Locomotion;
+        public WIPState(WIPStateMachine stateMachine, StationaryLocomotion locomotion, WalkInPlace wip)
+        {
+            this.stateMachine = stateMachine;
+            this.locomotion = locomotion;
+            this.walkInPlace = wip;
+        }
+    }
 
-        protected static WalkInPlace m_WIP;
-
-        protected static WIPStateMachine m_StateMachine;
-
-        protected static KinectActor m_currentActor;
-
-        public WIPPhase myPhase;
-
-        protected static void UpdateInternalState()
+    public abstract class WIPPhase
+    {
+        protected WIPState m_State;
+        protected void UpdateInternalState()
         {
             TryUpdateNewActor();
 
-            if(m_currentActor == null) return;
+            if(m_State.currentActor == null) return;
 
             UpdateNodePositions();
 
             UpdateTargetRotation();
         }
 
-        protected static void TryUpdateNewActor()
+        protected void TryUpdateNewActor()
         {
-            KinectActor actor = m_Locomotion.Actor;
+            KinectActor actor = m_State.locomotion.Actor;
 
             if(actor == null) return;
 
-            if(m_currentActor != null && m_currentActor.trackingId == actor.trackingId)
+            if(m_State.currentActor != null && m_State.currentActor.trackingId == actor.trackingId)
                 return;
 
-            m_currentActor = actor;
+            m_State.currentActor = actor;
         }
        
-        protected static void UpdateNodePositions()
+        protected void UpdateNodePositions()
         {
-            m_KneeLeftPrevPos = m_KneeLeftPos;
-            m_KneeRightPrevPos = m_KneeRightPos;
-            m_HipLeftPos = m_currentActor.bodyFrame[Windows.Kinect.JointType.HipLeft].position;
-            m_HipRightPos = m_currentActor.bodyFrame[Windows.Kinect.JointType.HipRight].position;
-            m_KneeLeftPos = m_currentActor.bodyFrame[Windows.Kinect.JointType.KneeLeft].position;
-            m_KneeRightPos = m_currentActor.bodyFrame[Windows.Kinect.JointType.KneeRight].position;
-            m_NeckPos = m_currentActor.bodyFrame[Windows.Kinect.JointType.Neck].position;
+            m_State.kneeLeftPrevPos = m_State.kneeLeftPos;
+            m_State.kneeRightPrevPos = m_State.kneeRightPos;
+            m_State.hipLeftPos = m_State.currentActor.bodyFrame[Windows.Kinect.JointType.HipLeft].position;
+            m_State.hipRightPos = m_State.currentActor.bodyFrame[Windows.Kinect.JointType.HipRight].position;
+            m_State.kneeLeftPos = m_State.currentActor.bodyFrame[Windows.Kinect.JointType.KneeLeft].position;
+            m_State.kneeRightPos = m_State.currentActor.bodyFrame[Windows.Kinect.JointType.KneeRight].position;
+            m_State.neckPos = m_State.currentActor.bodyFrame[Windows.Kinect.JointType.Neck].position;
         }
 
-        protected static void UpdateTargetRotation()
+        protected void UpdateTargetRotation()
         {
-            if(!m_WIP.useLeaningForRotation) return;
+            if(!m_State.walkInPlace.useLeaningForRotation) return;
 
-            Vector2 lean = m_currentActor.lean;
+            Vector2 lean = m_State.currentActor.lean;
 
-            if(Mathf.Abs(lean.x) <= m_WIP.deadzone) return;
+            if(Mathf.Abs(lean.x) <= m_State.walkInPlace.deadzone) return;
 
-            Rigidbody rb = m_Locomotion.rigidbdy;
+            Rigidbody rb = m_State.locomotion.rigidbdy;
 
-            float rotationValue = Mathf.Lerp(0, m_WIP.rotationSpeedLeaning, Mathf.Abs(lean.x)) * Mathf.Sign(lean.x);
+            //float rotationValue = Mathf.Lerp(m_State.walkInPlace.deadzone, m_State.walkInPlace.rotationSpeedLeaning, Mathf.Abs(lean.x)) * Mathf.Sign(lean.x);
+            float rotationValue = MapRangeToRange(m_State.walkInPlace.deadzone, 1.0f,
+                                                  0.0f, m_State.walkInPlace.rotationSpeedLeaning,
+                                                  Mathf.Abs(lean.x)) * Mathf.Sign(lean.x);
 
             if(rb != null)
             {
@@ -189,101 +204,98 @@ namespace Htw.Cave.Locomotion
                 return;
             }
 
-            m_Locomotion.target.rotation *= 
+            m_State.locomotion.target.rotation *= 
                 Quaternion.Euler(0, rotationValue * Time.deltaTime, 0);
         }
 
-        protected static float MapRangeToRange(float min, float max, float targetMin, float targetMax, float value)
+        protected float MapRangeToRange(float min, float max, float targetMin, float targetMax, float value)
         {
             return (value <= min) ? targetMin :
                    (value >= max) ? targetMax :
                    (value - min) * (targetMax - targetMin) / (max - min) + targetMin;
         }
 
-        public WIPState(WIPStateMachine stateMachine, StationaryLocomotion locomotion, WalkInPlace wip)
+        public WIPPhase(WIPState state)
         {
-            m_StateMachine = stateMachine;
-            m_Locomotion = locomotion;
-            m_WIP = wip;
+            m_State = state;
             TryUpdateNewActor();
         }
 
-        public abstract WIPState Update();
+        public abstract WIPPhase Update();
 
         protected void MoveTarget()
         {
-            Rigidbody rb = m_Locomotion.rigidbdy;
+            Rigidbody rb = m_State.locomotion.rigidbdy;
 
-            Vector3 movementDir = (!m_WIP.useLeaningForRotation) ? 
-                                   m_currentActor.bodyFrame[Windows.Kinect.JointType.Neck].rotation * -Vector3.forward :
-                                  (rb != null) ? rb.rotation * Vector3.forward : m_Locomotion.transform.forward;
+            Vector3 movementDir = (!m_State.walkInPlace.useLeaningForRotation) ? 
+                                   m_State.currentActor.bodyFrame[Windows.Kinect.JointType.Neck].rotation * -Vector3.forward :
+                                  (rb != null) ? rb.rotation * Vector3.forward : m_State.locomotion.transform.forward;
             movementDir.y = 0.0f;
             movementDir.Normalize();
 
             if(rb != null)
             {
-                rb.velocity = m_CurrentMovespeed * movementDir;
+                rb.velocity = m_State.currentMovespeed * movementDir;
             }
             else
             {
-                m_Locomotion.target.position += movementDir * m_CurrentMovespeed * Time.deltaTime;
+                m_State.locomotion.target.position += movementDir * m_State.currentMovespeed * Time.deltaTime;
             }
         }
     }
 
-    public class Stationary : WIPState
+    public class Stationary : WIPPhase
     {
         private float m_AngleLeft;
         private float m_AngleRight;
 
-        public Stationary(WIPStateMachine stateMachine, StationaryLocomotion locomotion, WalkInPlace wip) 
-            : base(stateMachine, locomotion, wip)
+        public Stationary(WIPState state) 
+            : base(state)
         {
-            myPhase = WIPPhase.Stationary;
         }
 
-        public override WIPState Update()
+        public override WIPPhase Update()
         {
-            if(Time.time - lastStatusChange >= m_StatusChangeResetDuration)
+            if(Time.time - m_State.lastStatusChange >= m_State.StatusChangeResetDuration)
             {
-                m_LastFoot = WIPFoot.None;
-                lastStatusChange = Time.time;
+                m_State.lastFoot = WIPFoot.None;
+                m_State.lastStatusChange = Time.time;
             }
 
             UpdateInternalState();
 
-            if(m_currentActor == null) return m_StateMachine[WIPPhase.Stationary];
+            if(m_State.currentActor == null) return m_State.stateMachine[WIPPhaseType.Stationary];
 
-            Vector3 leftKneeHipDir = m_HipLeftPos - m_KneeLeftPos;
-            Vector3 rightKneeHipDir = m_HipRightPos - m_KneeRightPos;
-            Vector3 centerHip = m_HipLeftPos + (m_HipRightPos - m_HipLeftPos) * 0.5f;
-            Vector3 upDir = (m_NeckPos - centerHip).normalized;
+            Vector3 leftKneeHipDir = m_State.hipLeftPos - m_State.kneeLeftPos;
+            Vector3 rightKneeHipDir = m_State.hipRightPos - m_State.kneeRightPos;
+            Vector3 centerHip = m_State.hipLeftPos + (m_State.hipRightPos - m_State.hipLeftPos) * 0.5f;
+            Vector3 upDir = (m_State.neckPos - centerHip).normalized;
 
             m_AngleLeft = Vector3.Angle(leftKneeHipDir, upDir);
             m_AngleRight = Vector3.Angle(rightKneeHipDir, upDir);
 
-            if(m_AngleLeft >= m_WIP.beginStepAngle && m_AngleRight >= m_WIP.beginStepAngle)
-                return m_StateMachine[WIPPhase.Stationary];
+            if(m_AngleLeft >= m_State.walkInPlace.beginStepAngle && m_AngleRight >= m_State.walkInPlace.beginStepAngle)
+                return m_State.stateMachine[WIPPhaseType.Stationary];
 
-            if((m_LastFoot == WIPFoot.None || m_LastFoot == WIPFoot.Right) &&
-                m_AngleLeft >= m_WIP.beginStepAngle)
+            if((m_State.lastFoot == WIPFoot.None || m_State.lastFoot == WIPFoot.Right) &&
+                m_AngleLeft >= m_State.walkInPlace.beginStepAngle)
             {
-                m_LastFoot = WIPFoot.Left;
-                return m_StateMachine[WIPPhase.BeginUpMove];
+                m_State.lastFoot = WIPFoot.Left;
+                return m_State.stateMachine[WIPPhaseType.BeginUpMove];
             }
 
-            if((m_LastFoot == WIPFoot.None || m_LastFoot == WIPFoot.Left) &&
-                m_AngleRight >= m_WIP.beginStepAngle)
+            if((m_State.lastFoot == WIPFoot.None || m_State.lastFoot == WIPFoot.Left) &&
+                m_AngleRight >= m_State.walkInPlace.beginStepAngle)
             {
-                m_LastFoot = WIPFoot.Right;
-                return m_StateMachine[WIPPhase.BeginUpMove];
+                m_State.lastFoot = WIPFoot.Right;
+                return m_State.stateMachine[WIPPhaseType.BeginUpMove];
             }
 
-            return m_StateMachine[WIPPhase.Stationary];
+            return m_State.stateMachine[WIPPhaseType.Stationary];
         }
     }
 
-    public class BeginUpMove : WIPState
+    public class BeginUpMove : WIPPhase
     {
         private bool m_isInitialized = false;
         private float m_LastCheck;
@@ -291,129 +303,126 @@ namespace Htw.Cave.Locomotion
         private const float m_CheckAngleChangedInverval = 0.0333f;
         private const float m_MinAngleChangePerInterval = 0.5f;
 
-        public BeginUpMove(WIPStateMachine stateMachine, StationaryLocomotion locomotion, WalkInPlace wip) 
-            : base(stateMachine, locomotion, wip)
+        public BeginUpMove(WIPState state) 
+            : base(state)
         {
-            myPhase = WIPPhase.BeginUpMove;
         }
 
-        public override WIPState Update()
+        public override WIPPhase Update()
         {
-            if(Time.time - lastStatusChange >= m_StatusChangeResetDuration)
-                return m_StateMachine[WIPPhase.EndStep];
+            if(Time.time - m_State.lastStatusChange >= m_State.StatusChangeResetDuration)
+                return m_State.stateMachine[WIPPhaseType.EndStep];
 
             UpdateInternalState();
 
-            if(m_currentActor == null) return m_StateMachine[WIPPhase.Stationary];
+            if(m_State.currentActor == null) return m_State.stateMachine[WIPPhaseType.Stationary];
 
-            Vector3 centerHip = m_HipLeftPos + (m_HipRightPos - m_HipLeftPos) * 0.5f;
-            Vector3 upDir = (m_NeckPos - centerHip).normalized;
+            Vector3 centerHip = m_State.hipLeftPos + (m_State.hipRightPos - m_State.hipLeftPos) * 0.5f;
+            Vector3 upDir = (m_State.neckPos - centerHip).normalized;
 
-            if(m_LastFoot == WIPFoot.Left)
+            if(m_State.lastFoot == WIPFoot.Left)
             {
-                Vector3 leftKneeHipDir = m_HipLeftPos - m_KneeLeftPos;
-                m_CurrentAngle = Vector3.Angle(leftKneeHipDir, upDir);
+                Vector3 leftKneeHipDir = m_State.hipLeftPos - m_State.kneeLeftPos;
+                m_State.currentAngle = Vector3.Angle(leftKneeHipDir, upDir);
             }
             else
             {
-                Vector3 rightKneeHipDir = m_HipRightPos - m_KneeRightPos;
-                m_CurrentAngle = Vector3.Angle(rightKneeHipDir, upDir);
+                Vector3 rightKneeHipDir = m_State.hipRightPos - m_State.kneeRightPos;
+                m_State.currentAngle = Vector3.Angle(rightKneeHipDir, upDir);
             }
 
             if (!m_isInitialized)
             {
                 m_isInitialized = true;
                 m_LastCheck = Time.time;
-                m_LastAngle = m_CurrentAngle;
+                m_State.lastAngle = m_State.currentAngle;
             }
 
             if(Time.time - m_LastCheck >= m_CheckAngleChangedInverval)
             {
                 m_LastCheck = Time.time;
 
-                m_DeltaAngle = m_CurrentAngle - m_LastAngle;
-                m_LastAngle = m_CurrentAngle;
+                m_State.deltaAngle = m_State.currentAngle - m_State.lastAngle;
+                m_State.lastAngle = m_State.currentAngle;
 
-                if(m_DeltaAngle < m_MinAngleChangePerInterval)
+                if(m_State.deltaAngle < m_MinAngleChangePerInterval)
                 {
                     m_isInitialized = false;
-                    return m_StateMachine[WIPPhase.BeginTurnDirection];
+                    return m_State.stateMachine[WIPPhaseType.BeginTurnDirection];
                 }
             }
 
-            float speedMultiplier = MapRangeToRange(0.0f, m_WIP.maxVelocityDeltaAngle, 
+            float speedMultiplier = MapRangeToRange(0.0f, m_State.walkInPlace.maxVelocityDeltaAngle, 
                                                     0.75f, 1.0f,
-                                                    m_DeltaAngle);
+                                                    m_State.deltaAngle);
 
-            m_CurrentMovespeed = Mathf.Max(speedMultiplier * speedMultiplier * 
-                                            m_Locomotion.maxWalkingSpeed, 
-                                            m_Locomotion.minWalkingSpeed) ;
+            m_State.currentMovespeed = Mathf.Max(speedMultiplier * speedMultiplier * 
+                                            m_State.locomotion.maxWalkingSpeed, 
+                                            m_State.locomotion.minWalkingSpeed) ;
 
             MoveTarget();
 
-            return m_StateMachine[WIPPhase.BeginUpMove];
+            return m_State.stateMachine[WIPPhaseType.BeginUpMove];
         }
     }
 
-    public class TurnDirection : WIPState
+    public class TurnDirection : WIPPhase
     {
         private const float m_TurnDirectionDuration = 0.1f;
 
-        public TurnDirection(WIPStateMachine stateMachine, StationaryLocomotion locomotion, WalkInPlace wip) 
-            : base(stateMachine, locomotion, wip)
+        public TurnDirection(WIPState state) 
+            : base(state)
         {
-            myPhase = WIPPhase.BeginTurnDirection;
         }
 
-        public override WIPState Update()
+        public override WIPPhase Update()
         {
             UpdateInternalState();
 
-            if(m_currentActor == null) return m_StateMachine[WIPPhase.Stationary];
+            if(m_State.currentActor == null) return m_State.stateMachine[WIPPhaseType.Stationary];
 
-            if(Time.time - lastStatusChange > m_TurnDirectionDuration)
-                return m_StateMachine[WIPPhase.BeginDownMove];
+            if(Time.time - m_State.lastStatusChange > m_TurnDirectionDuration)
+                return m_State.stateMachine[WIPPhaseType.BeginDownMove];
 
             MoveTarget();
 
-            return m_StateMachine[WIPPhase.BeginTurnDirection];
+            return m_State.stateMachine[WIPPhaseType.BeginTurnDirection];
         }
     }
 
-    public class BeginDownMove : WIPState
+    public class BeginDownMove : WIPPhase
     {
         private bool m_isInitialized = false;
         private float m_LastCheck;
         private const float m_CheckAngleChangedInverval = 0.0333f;
         private const float m_MinAngleChange = 0.1f;
 
-        public BeginDownMove(WIPStateMachine stateMachine, StationaryLocomotion locomotion, WalkInPlace wip) 
-            : base(stateMachine, locomotion, wip)
+        public BeginDownMove(WIPState state) 
+            : base(state)
         {
-            myPhase = WIPPhase.BeginDownMove;
         }
 
-        public override WIPState Update()
+        public override WIPPhase Update()
         {
-            if(Time.time - lastStatusChange >= m_StatusChangeResetDuration)
-                return m_StateMachine[WIPPhase.EndStep];
+            if(Time.time - m_State.lastStatusChange >= m_State.StatusChangeResetDuration)
+                return m_State.stateMachine[WIPPhaseType.EndStep];
 
             UpdateInternalState();
 
-            if(m_currentActor == null) return m_StateMachine[WIPPhase.Stationary];
+            if(m_State.currentActor == null) return m_State.stateMachine[WIPPhaseType.Stationary];
 
-            Vector3 centerHip = m_HipLeftPos + (m_HipRightPos - m_HipLeftPos) * 0.5f;
-            Vector3 upDir = (m_NeckPos - centerHip).normalized;
+            Vector3 centerHip = m_State.hipLeftPos + (m_State.hipRightPos - m_State.hipLeftPos) * 0.5f;
+            Vector3 upDir = (m_State.neckPos - centerHip).normalized;
 
-            if(m_LastFoot == WIPFoot.Left)
+            if(m_State.lastFoot == WIPFoot.Left)
             {
-                Vector3 leftKneeHipDir = m_HipLeftPos - m_KneeLeftPos;
-                m_CurrentAngle = Vector3.Angle(leftKneeHipDir, upDir);
+                Vector3 leftKneeHipDir = m_State.hipLeftPos - m_State.kneeLeftPos;
+                m_State.currentAngle = Vector3.Angle(leftKneeHipDir, upDir);
             }
             else
             {
-                Vector3 rightKneeHipDir = m_HipRightPos - m_KneeRightPos;
-                m_CurrentAngle = Vector3.Angle(rightKneeHipDir, upDir);
+                Vector3 rightKneeHipDir = m_State.hipRightPos - m_State.kneeRightPos;
+                m_State.currentAngle = Vector3.Angle(rightKneeHipDir, upDir);
             }
 
             if(!m_isInitialized)
@@ -426,129 +435,127 @@ namespace Htw.Cave.Locomotion
             {
                 m_LastCheck = Time.time;
 
-                m_DeltaAngle = m_CurrentAngle - m_LastAngle;
-                m_LastAngle = m_CurrentAngle;
+                m_State.deltaAngle = m_State.currentAngle - m_State.lastAngle;
+                m_State.lastAngle = m_State.currentAngle;
 
-                if(m_DeltaAngle > m_MinAngleChange)
+                if(m_State.deltaAngle > m_MinAngleChange)
                 {
                     m_isInitialized = false;
-                    return m_StateMachine[WIPPhase.EndStep];
+                    return m_State.stateMachine[WIPPhaseType.EndStep];
                 }
             }
 
-            float speedMultiplier = MapRangeToRange(0.0f, m_WIP.maxVelocityDeltaAngle, 
+            float speedMultiplier = MapRangeToRange(0.0f, m_State.walkInPlace.maxVelocityDeltaAngle, 
                                                     0.75f, 1.0f,
-                                                    Mathf.Abs(m_DeltaAngle));
+                                                    Mathf.Abs(m_State.deltaAngle));
 
-            m_CurrentMovespeed = Mathf.Max(speedMultiplier * speedMultiplier * 
-                                            m_Locomotion.maxWalkingSpeed, 
-                                            m_Locomotion.minWalkingSpeed);
+            m_State.currentMovespeed = Mathf.Max(speedMultiplier * speedMultiplier * 
+                                            m_State.locomotion.maxWalkingSpeed, 
+                                            m_State.locomotion.minWalkingSpeed);
 
             MoveTarget();
 
-            return m_StateMachine[WIPPhase.BeginDownMove];
+            return m_State.stateMachine[WIPPhaseType.BeginDownMove];
         }
     }
 
-    public class EndStep : WIPState
+    public class EndStep : WIPPhase
     {
         private float m_AngleLeft;
         private float m_AngleRight;
 
-        public EndStep(WIPStateMachine stateMachine, StationaryLocomotion locomotion, WalkInPlace wip) 
-            : base(stateMachine, locomotion, wip)
+        public EndStep(WIPState state) 
+            : base(state)
         {
-            myPhase = WIPPhase.EndStep;
         }
 
-        public override WIPState Update()
+        public override WIPPhase Update()
         {
             UpdateInternalState();
 
-            if(m_currentActor == null) return m_StateMachine[WIPPhase.Stationary];
+            if(m_State.currentActor == null) return m_State.stateMachine[WIPPhaseType.Stationary];
 
-            Vector3 leftKneeHipDir = m_HipLeftPos - m_KneeLeftPos;
-            Vector3 rightKneeHipDir = m_HipRightPos - m_KneeRightPos;
-            Vector3 centerHip = m_HipLeftPos + (m_HipRightPos - m_HipLeftPos) * 0.5f;
-            Vector3 upDir = (m_NeckPos - centerHip).normalized;
+            Vector3 leftKneeHipDir = m_State.hipLeftPos - m_State.kneeLeftPos;
+            Vector3 rightKneeHipDir = m_State.hipRightPos - m_State.kneeRightPos;
+            Vector3 centerHip = m_State.hipLeftPos + (m_State.hipRightPos - m_State.hipLeftPos) * 0.5f;
+            Vector3 upDir = (m_State.neckPos - centerHip).normalized;
 
             m_AngleLeft = Vector3.Angle(leftKneeHipDir, upDir);
             m_AngleRight = Vector3.Angle(rightKneeHipDir, upDir);
 
-            if(m_LastFoot == WIPFoot.Left && m_AngleLeft < m_WIP.endStepAngle)
+            if(m_State.lastFoot == WIPFoot.Left && m_AngleLeft < m_State.walkInPlace.endStepAngle)
             {
-                return m_StateMachine[WIPPhase.Stationary];
+                return m_State.stateMachine[WIPPhaseType.Stationary];
             }
 
-            if(m_LastFoot == WIPFoot.Right && m_AngleRight < m_WIP.endStepAngle)
+            if(m_State.lastFoot == WIPFoot.Right && m_AngleRight < m_State.walkInPlace.endStepAngle)
             {
-                return m_StateMachine[WIPPhase.Stationary];
+                return m_State.stateMachine[WIPPhaseType.Stationary];
             }
 
-            return m_StateMachine[WIPPhase.EndStep];
+            return m_State.stateMachine[WIPPhaseType.EndStep];
         }
     }
 
-    public class SmoothEndStep : WIPState
+    public class SmoothEndStep : WIPPhase
     {
         private float m_AngleLeft;
         private float m_AngleRight;
         private const float m_FadeOutDuration = 0.3f;
 
-        public SmoothEndStep(WIPStateMachine stateMachine, StationaryLocomotion locomotion, WalkInPlace wip)
-            : base(stateMachine, locomotion, wip)
+        public SmoothEndStep(WIPState state)
+            : base(state)
         {
-            myPhase = WIPPhase.SmoothEndStep;
         }
 
-        public override WIPState Update()
+        public override WIPPhase Update()
         {
-            if(Time.time - lastStatusChange >= m_StatusChangeResetDuration)
+            if(Time.time - m_State.lastStatusChange >= m_State.StatusChangeResetDuration)
             {
-                m_LastFoot = WIPFoot.None;
-                lastStatusChange = Time.time;
-                return m_StateMachine[WIPPhase.Stationary];
+                m_State.lastFoot = WIPFoot.None;
+                m_State.lastStatusChange = Time.time;
+                return m_State.stateMachine[WIPPhaseType.Stationary];
             }
 
             UpdateInternalState();
 
-            if(m_currentActor == null) return m_StateMachine[WIPPhase.Stationary];
+            if(m_State.currentActor == null) return m_State.stateMachine[WIPPhaseType.Stationary];
 
-            Vector3 leftKneeHipDir = m_HipLeftPos - m_KneeLeftPos;
-            Vector3 rightKneeHipDir = m_HipRightPos - m_KneeRightPos;
-            Vector3 centerHip = m_HipLeftPos + (m_HipRightPos - m_HipLeftPos) * 0.5f;
-            Vector3 upDir = (m_NeckPos - centerHip).normalized;
+            Vector3 leftKneeHipDir = m_State.hipLeftPos - m_State.kneeLeftPos;
+            Vector3 rightKneeHipDir = m_State.hipRightPos - m_State.kneeRightPos;
+            Vector3 centerHip = m_State.hipLeftPos + (m_State.hipRightPos - m_State.hipLeftPos) * 0.5f;
+            Vector3 upDir = (m_State.neckPos - centerHip).normalized;
 
             m_AngleLeft = Vector3.Angle(leftKneeHipDir, upDir);
             m_AngleRight = Vector3.Angle(rightKneeHipDir, upDir);
 
-            float deltaTime = lastStatusChange - Time.time + m_FadeOutDuration;
+            float deltaTime = m_State.lastStatusChange - Time.time + m_FadeOutDuration;
             
             float movementSpeedMultiplier = MapRangeToRange(0.0f, m_FadeOutDuration, 0.0f, 1.0f, deltaTime);
             
             // smooth out
-            float movementSpeed = movementSpeedMultiplier * m_CurrentMovespeed;
+            float movementSpeed = movementSpeedMultiplier * m_State.currentMovespeed;
 
             MoveTarget();
 
-            if(m_AngleLeft >= m_WIP.beginStepAngle && m_AngleRight >= m_WIP.beginStepAngle)
-                return m_StateMachine[WIPPhase.SmoothEndStep];
+            if(m_AngleLeft >= m_State.walkInPlace.beginStepAngle && m_AngleRight >= m_State.walkInPlace.beginStepAngle)
+                return m_State.stateMachine[WIPPhaseType.SmoothEndStep];
 
-            if((m_LastFoot == WIPFoot.None || m_LastFoot == WIPFoot.Right) &&
-                m_AngleLeft >= m_WIP.beginStepAngle)
+            if((m_State.lastFoot == WIPFoot.None || m_State.lastFoot == WIPFoot.Right) &&
+                m_AngleLeft >= m_State.walkInPlace.beginStepAngle)
             {
-                m_LastFoot = WIPFoot.Left;
-                return m_StateMachine[WIPPhase.BeginUpMove];
+                m_State.lastFoot = WIPFoot.Left;
+                return m_State.stateMachine[WIPPhaseType.BeginUpMove];
             }
 
-            if((m_LastFoot == WIPFoot.None || m_LastFoot == WIPFoot.Left) &&
-                m_AngleRight >= m_WIP.beginStepAngle)
+            if((m_State.lastFoot == WIPFoot.None || m_State.lastFoot == WIPFoot.Left) &&
+                m_AngleRight >= m_State.walkInPlace.beginStepAngle)
             {
-                m_LastFoot = WIPFoot.Right;
-                return m_StateMachine[WIPPhase.BeginUpMove];
+                m_State.lastFoot = WIPFoot.Right;
+                return m_State.stateMachine[WIPPhaseType.BeginUpMove];
             }
 
-            return m_StateMachine[WIPPhase.SmoothEndStep];
+            return m_State.stateMachine[WIPPhaseType.SmoothEndStep];
         }
     }
 }

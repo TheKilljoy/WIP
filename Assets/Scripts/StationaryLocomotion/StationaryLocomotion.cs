@@ -9,7 +9,7 @@ namespace Htw.Cave.Locomotion
 
         public float minWalkingSpeed = 0.5f;
 
-        public KinectTrackingArea trackingArea;
+        public KinectActorTracker tracker;
 
         [SerializeField]
         private Transform m_Target;
@@ -29,25 +29,7 @@ namespace Htw.Cave.Locomotion
 
         public Rigidbody rigidbdy => this.m_Rigidbody;
 
-        private KinectActor m_actor;
-
-        public KinectActor Actor => m_actor;
-
-
-        void Awake()
-        {
-            trackingArea.onActorChanged += UpdateCurrentActor;
-        }
-
-        private void OnDestroy()
-        {
-            trackingArea.onActorChanged -= UpdateCurrentActor;
-        }
-
-        private void UpdateCurrentActor(KinectActor actor)
-        {
-            m_actor = trackingArea.actor;
-        }
+        public KinectActor Actor => tracker.GetLongestTracked();
     }
 }
 
